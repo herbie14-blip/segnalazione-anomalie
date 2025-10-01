@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segnalazione Anomalie</title>
+    <style>
+        /* Stile per rendere l'interfaccia pulita e facile da usare */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            box-sizing: border-box; /* Importante per non far uscire gli elementi dal contenitore */
+            font-size: 16px;
+        }
+        input[type="file"] {
+            padding: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+        }
+        .error {
+            color: #721c24;
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Segnalazione Anomalia</h1>
+        <form id="anomalyForm">
+            <div class="form-group">
+                <label for="negozio">Nome Negozio</label>
+                <input type="text" id="negozio" name="negozio" required>
+            </div>
+
+            <div class="form-group">
+                <label for="numeroOrdine">Numero Ordine / DDT</label>
+                <input type="text" id="numeroOrdine" name="numeroOrdine" required>
+            </div>
+
+            <div class="form-group">
+                <label for="anomalia">Tipo di Anomalia</label>
+                <select id="anomalia" name="anomalia" required>
+                    <option value="">-- Seleziona un'opzione --</option>
+                    <option value="Merce Mancante">Merce Mancante</option>
+                    <option value="Merce Danneggiata">Merce Danneggiata</option>
+                    <option value="Prodotto Errato">Prodotto Errato</option>
+                    <option value="Qualità non conforme">Qualità non conforme</option>
+                    <option value="Altro">Altro (specificare nelle note)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="quantita">Quantità</label>
+                <input type="number" id="quantita" name="quantita" min="1" required>
+            </div>
+
+            <div class="form-group">
+                <label for="foto">Carica Foto (se merce danneggiata)</label>
+                <input type="file" id="foto" name="foto" accept="image/*">
+            </div>
+
+            <button type="submit" id="submitBtn">Invia Segnalazione</button>
+        </form>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // <<<=== https://script.google.com/macros/s/AKfycbwIPsiUQJW7jRvwo1YyXl9xADUwEd4NnAW1wdSfaNlI1pNJYoC7zj_KsXl0gO_fFCM27Q/exec ===>>>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIPsiUQJW7jRvwo1YyXl9xADUwEd4NnAW1wdSfaNlI1pNJYoC7zj_KsXl0gO_fFCM27Q/exec";
+
+        const form = document.getElementById('anomalyForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusDiv = document.getElementById('status');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Impedisce l'invio tradizionale del form
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Invio in corso...';
+            statusDiv.innerHTML = '';
+            statusDiv.className = '';
+
+            const file = document.getElementById('foto').files[0];
+            const formData = {
+                negozio: document.getElementById('negozio').value,
+                numeroOrdine: document.getElementById('numeroOrdine').value,
+                anomalia: document.getElementById('anomalia').value,
+                quantita: document.getElementById('quantita').value,
+            };
+
+            // Se c'è un file, lo leggiamo come Base64 e poi inviamo tutto
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const base64File = event.target.result.split(',')[1];
+                    const fileData = {
+                        name: file.name,
+                        mimeType: file.type,
+                        data: base64File
+                    };
+                    formData.foto = fileData;
+                    sendData(formData);
+                };
+                reader.onerror = function(error) {
+                    showStatus('Errore nella lettura del file.', 'error');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Se non c'è file, inviamo subito i dati
+                sendData(formData);
+            }
+        });
+
+        function sendData(data) {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    showStatus(res.message, 'success');
+                    form.reset(); // Pulisce il form dopo l'invio
+                } else {
+                    showStatus('Si è verificato un errore: ' + res.message, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus('Errore di rete. Riprova.', 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Invia Segnalazione';
+            });
+        }
+        
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = type; // 'success' o 'error'
+        }
+    </script>
+
+</body>
+</html>
