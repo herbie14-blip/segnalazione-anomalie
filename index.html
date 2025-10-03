@@ -43,9 +43,6 @@
             box-sizing: border-box;
             font-size: 16px;
         }
-        input[type="file"] {
-            padding: 5px;
-        }
         button {
             background-color: #007bff;
             color: white;
@@ -53,9 +50,6 @@
             border: none;
             cursor: pointer;
             transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
         }
         button:disabled {
             background-color: #cccccc;
@@ -101,7 +95,7 @@
                     <option value="Merce Danneggiata">Merce Danneggiata</option>
                     <option value="Prodotto Errato">Prodotto Errato</option>
                     <option value="Qualità non conforme">Qualità non conforme</option>
-                    <option value="Altro">Altro (specificare nelle note)</option>
+                    <option value="Altro">Altro</option>
                 </select>
             </div>
 
@@ -110,18 +104,13 @@
                 <input type="number" id="quantita" name="quantita" min="1" required>
             </div>
 
-            <div class="form-group">
-                <label for="foto">Carica Foto (se merce danneggiata)</label>
-                <input type="file" id="foto" name="foto" accept="image/*">
-            </div>
-
             <button type="submit" id="submitBtn">Invia Segnalazione</button>
         </form>
         <div id="status"></div>
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxTqMZyD0cVmfrLKU9JAt47D4up3ZNeouTIy23F46UEsBsS8RRc6LX1SzU9eNILsWhPVg/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXwx9cqxS4UA5FMGsWgIrruxUjzVVk38g0M8-WyjVBeFIH2isSXC5gzNbwygHmAih6sw/exec";
 
         const form = document.getElementById('anomalyForm');
         const submitBtn = document.getElementById('submitBtn');
@@ -135,7 +124,6 @@
             statusDiv.innerHTML = '';
             statusDiv.className = '';
 
-            const file = document.getElementById('foto').files[0];
             const formData = {
                 negozio: document.getElementById('negozio').value,
                 numeroOrdine: document.getElementById('numeroOrdine').value,
@@ -143,19 +131,41 @@
                 quantita: document.getElementById('quantita').value,
             };
 
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const base64File = event.target.result.split(',')[1];
-                    const fileData = {
-                        name: file.name,
-                        mimeType: file.type,
-                        data: base64File
-                    };
-                    formData.foto = fileData;
-                    sendData(formData);
-                };
-                reader.onerror = function(error) {
-                    showStatus('Errore nella lettura del file.', 'error');
-                };
-                reader
+            sendData(formData);
+        });
+
+        function sendData(data) {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    showStatus(res.message, 'success');
+                    form.reset();
+                } else {
+                    showStatus('Si è verificato un errore: ' + res.message, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus('Errore di rete. Riprova.', 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Invia Segnalazione';
+            });
+        }
+        
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+        }
+    </script>
+
+</body>
+</html>
